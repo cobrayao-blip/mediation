@@ -909,7 +909,15 @@ const PORT = Number(process.env.PORT) || 4000;
 async function ensureAdmin() {
   const count = await prisma.user.count();
   if (count > 0) return;
-  const defaultPassword = process.env.ADMIN_DEFAULT_PASSWORD || "admin123";
+  const isProd = process.env.NODE_ENV === "production";
+  let defaultPassword = process.env.ADMIN_DEFAULT_PASSWORD;
+  if (!defaultPassword) {
+    if (isProd) {
+      console.error("生产环境必须设置环境变量 ADMIN_DEFAULT_PASSWORD（默认管理员密码），请配置 .env 后重启");
+      throw new Error("ADMIN_DEFAULT_PASSWORD is required in production");
+    }
+    defaultPassword = "admin123";
+  }
   await prisma.user.create({
     data: {
       name: "管理员",
@@ -918,7 +926,7 @@ async function ensureAdmin() {
       passwordHash: await hashPassword(defaultPassword),
     },
   });
-  console.log("已创建默认管理员：admin@mediation.local /", defaultPassword, "（请首次登录后修改密码）");
+  console.log("已创建默认管理员：admin@mediation.local（请首次登录后到「用户中心」修改密码）");
 }
 
 app.listen(PORT, "0.0.0.0", async () => {
