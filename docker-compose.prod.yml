@@ -20,6 +20,6 @@ services:
     image: mediation-frontend:latest
     volumes: []
     command: ["nginx", "-g", "daemon off;"]
-    # 端口不在此处写，由 docker-compose.port8080.yml 或 docker-compose.port80.yml 指定
+    ports: []   # 覆盖 base 的 3000，实际端口由 port8080/port80 指定
     depends_on:
       - backend
