@@ -1,6 +1,7 @@
-# 生产模式覆盖：前端构建 + Nginx，后端 node dist。上线时使用：
-#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
-# 访问：http://localhost（80 端口）
+# 生产模式覆盖：前端构建 + Nginx，后端 node dist。
+# 端口由单独文件指定，避免与主站 80 冲突时合并出 80+8080 导致 80 绑定失败。
+# 与主站共存（px.ibizsoft.cn）：-f docker-compose.port8080.yml → 前端 8080
+# 独占 80：-f docker-compose.port80.yml → 前端 80
 name: mediation
 
 services:
@@ -19,7 +20,6 @@ services:
     image: mediation-frontend:latest
     volumes: []
     command: ["nginx", "-g", "daemon off;"]
-    ports:
-      - "80:80"
+    # 端口不在此处写，由 docker-compose.port8080.yml 或 docker-compose.port80.yml 指定
     depends_on:
       - backend

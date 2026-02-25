@@ -1,0 +1,8 @@
+# 独占 80 端口（本机无其他网站时使用）
+# 使用：docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.port80.yml up -d --build
+name: mediation
+
+services:
+  frontend:
+    ports:
+      - "80:80"
