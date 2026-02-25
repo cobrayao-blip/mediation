@@ -319,8 +319,19 @@ export default function AdminPage() {
       // 获取当前LLM配置
       const llmConfigRes = await fetchWithAuth('/api/settings/llm');
       const llmConfig = await llmConfigRes.json();
-      const defaultProvider = llmConfig.qwen?.apiKey ? 'qwen' : 'deepseek';
-      const defaultModel = llmConfig[defaultProvider]?.model || (defaultProvider === 'qwen' ? 'qwen3-max-preview' : 'deepseek-chat');
+      // 后端返回的配置中不包含明文 apiKey，而是 hasApiKey 字段
+      let defaultProvider: 'qwen' | 'deepseek';
+      if (llmConfig.qwen?.hasApiKey) {
+        defaultProvider = 'qwen';
+      } else if (llmConfig.deepseek?.hasApiKey) {
+        defaultProvider = 'deepseek';
+      } else {
+        // 都没有配置时，默认仍按 deepseek 走，交给后端抛缺 key 的错误提示
+        defaultProvider = 'deepseek';
+      }
+      const defaultModel =
+        llmConfig[defaultProvider]?.model ||
+        (defaultProvider === 'qwen' ? 'qwen3-max-preview' : 'deepseek-chat');
       
       const res = await fetchWithAuth('/api/scenarios/generate', {
         method: 'POST',
