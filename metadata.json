@@ -1,0 +1,7 @@
+{
+  "name": "司法调解实训机",
+  "description": "基于AI的专业司法调解培训平台，通过实战演练、法律问答及案例分析，助力新人调解员快速上手。",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

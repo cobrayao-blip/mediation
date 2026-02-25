@@ -1,0 +1,141 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  department   String?
+  email        String?  @unique
+  phone        String?
+  role         String   @default("employee") // admin | employee | mentor
+  passwordHash String   @map("password_hash")
+  status       String   @default("active")   // active | disabled
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  practiceSessions PracticeSession[] @relation("UserSessions")
+  mentorComments   MentorComment[]   @relation("MentorComments")
+
+  @@map("users")
+}
+
+model Scenario {
+  id           String   @id @default(cuid())
+  title        String
+  category     String
+  description  String
+  difficulty   String   // 入门级 | 进阶级 | 专业级
+  disputePoint String   @map("dispute_point")
+  partyA       Json     @map("party_a") // { name, trait, background }
+  partyB       Json     @map("party_b")
+  sortOrder    Int      @default(0) @map("sort_order")
+  enabled      Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  practiceSessions PracticeSession[]
+
+  @@map("scenarios")
+}
+
+model Skill {
+  id          String   @id @default(cuid())
+  name        String
+  category    String   // 沟通技巧 | 程序控制 | 谈判策略 | 法律适用
+  description String
+  howToUse    String   @map("how_to_use")
+  phrasings   Json     // string[]
+  pitfalls    Json     // string[]
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("skills")
+}
+
+model LlmConfig {
+  id        String   @id @default(cuid())
+  provider  String   @unique // qwen | deepseek，每个 provider 只有一条记录
+  modelName String?  @map("model_name") // 允许为空，使用默认值
+  apiKey    String?  @map("api_key") // 加密或明文，仅后端使用
+  baseUrl   String?  @map("base_url")
+  isActive  Boolean  @default(false) @map("is_active")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("llm_config")
+}
+
+// 应用级设置（如默认大模型），key 唯一
+model AppSetting {
+  key   String @id
+  value String?
+  @@map("app_setting")
+}
+
+model PracticeSession {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  scenarioId  String   @map("scenario_id")
+  messages    Json     // 对话记录
+  assessment  Json?    // 评估结果（包含分阶段评估）
+  document    String?  // 生成的调解协议书草稿
+  mentorComment String? @map("mentor_comment") // 导师评语
+  isObserved   Boolean  @default(false) @map("is_observed") // 是否有导师观摩
+  observers    Json?    // 观摩者ID列表（导师/管理员）
+  collaborators Json?  // 协同参与者（记录员、助手等）
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user     User            @relation("UserSessions", fields: [userId], references: [id], onDelete: Cascade)
+  scenario Scenario         @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  comments MentorComment[]
+  analytics PracticeAnalytics[]
+
+  @@map("practice_sessions")
+  @@index([userId])
+  @@index([scenarioId])
+  @@index([createdAt])
+}
+
+model MentorComment {
+  id          String   @id @default(cuid())
+  sessionId  String   @map("session_id")
+  mentorId   String   @map("mentor_id") // 导师/管理员ID
+  comment     String   // 评语内容
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  session PracticeSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  mentor  User            @relation("MentorComments", fields: [mentorId], references: [id], onDelete: Cascade)
+
+  @@map("mentor_comments")
+  @@index([sessionId])
+  @@index([mentorId])
+}
+
+model PracticeAnalytics {
+  id          String   @id @default(cuid())
+  sessionId  String   @map("session_id")
+  userId      String   @map("user_id")
+  scenarioId  String   @map("scenario_id")
+  totalScore  Int      @map("total_score") // 综合得分
+  stageScores Json?    @map("stage_scores") // 各阶段得分 { "接案": 80, "释明": 75, ... }
+  skillUsage  Json?    @map("skill_usage") // 使用的技巧统计
+  commonMistakes Json? @map("common_mistakes") // 常见错误统计
+  practiceDate DateTime @map("practice_date") // 练习日期（用于成长曲线）
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  session PracticeSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("practice_analytics")
+  @@index([userId])
+  @@index([scenarioId])
+  @@index([practiceDate])
+  @@index([userId, practiceDate])
+}

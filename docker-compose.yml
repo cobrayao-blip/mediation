@@ -1,0 +1,65 @@
+# 默认 = 开发模式（热更新），改代码即生效。上线时用：docker compose -f docker-compose.yml -f docker-compose.prod.yml up
+name: mediation
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: mediation-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mediation}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mediation_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-mediation}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mediation} -d ${POSTGRES_DB:-mediation}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    image: node:20-alpine
+    working_dir: /app
+    container_name: mediation-backend
+    restart: unless-stopped
+    volumes:
+      - ./server:/app
+      - backend_node_modules:/app/node_modules
+    command: sh -c "npm install && npx prisma generate && npm run dev"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-mediation}:${POSTGRES_PASSWORD:-mediation_secret}@postgres:5432/${POSTGRES_DB:-mediation}
+      PORT: 4000
+      QWEN_API_KEY: ${QWEN_API_KEY:-}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      JWT_SECRET: ${JWT_SECRET:-mediation-jwt-secret-change-in-prod}
+      ADMIN_DEFAULT_PASSWORD: ${ADMIN_DEFAULT_PASSWORD:-admin123}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "4000:4000"
+
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    container_name: mediation-frontend
+    restart: unless-stopped
+    volumes:
+      - .:/app
+      - frontend_node_modules:/app/node_modules
+    command: sh -c "npm install && npm run dev"
+    environment:
+      VITE_API_PROXY_TARGET: http://backend:4000
+      VITE_USE_POLLING: "true"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  backend_node_modules:
+  frontend_node_modules:

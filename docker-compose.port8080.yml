@@ -1,0 +1,8 @@
+# 与主站共存：前端不占 80，改为 8080，由主机 Nginx 反代 px.ibizsoft.cn → 127.0.0.1:8080
+# 使用：docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.port8080.yml up -d --build
+name: mediation
+
+services:
+  frontend:
+    ports:
+      - "8080:80"

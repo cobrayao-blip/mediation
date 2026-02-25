@@ -1,0 +1,25 @@
+# 生产模式覆盖：前端构建 + Nginx，后端 node dist。上线时使用：
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+# 访问：http://localhost（80 端口）
+name: mediation
+
+services:
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    image: mediation-backend:latest
+    volumes: []
+    command: sh -c "npx prisma migrate deploy && node dist/index.js"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mediation-frontend:latest
+    volumes: []
+    command: ["nginx", "-g", "daemon off;"]
+    ports:
+      - "80:80"
+    depends_on:
+      - backend

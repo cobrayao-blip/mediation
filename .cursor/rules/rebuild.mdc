@@ -1,0 +1,10 @@
+---
+description: 部署与重新构建约定
+globs: 
+alwaysApply: true
+---
+
+# 部署与重新构建
+
+- 当需要使前端或后端代码变更在 Docker **生产**部署中生效时，**由助手直接执行**重新构建与启动，不要仅给出命令让用户自己执行。常用命令：`docker compose build --no-cache <frontend|backend>` 或 `docker compose up -d --build`，在项目根目录 `d:\mediation` 下执行。
+- 当用户在 Docker 下开发且需要**热更新**时，使用开发模式：`docker compose -f docker-compose.yml -f docker-compose.dev.yml up`（由助手直接执行）。前端访问 http://localhost:3000，改代码即热更新。
