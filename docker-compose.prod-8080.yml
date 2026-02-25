@@ -1,0 +1,62 @@
+# 生产环境：PostgreSQL + 后端（Node/Express）+ 前端（Nginx），前端暴露 8080 端口
+# 用于与主站共存，由主站 Nginx 反向代理 px.ibizsoft.cn → 服务器:8080
+#
+# 启动命令（在 /opt/mediation 下）：
+#   docker compose -f docker-compose.prod-8080.yml up -d --build
+
+name: mediation-prod
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: mediation-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mediation}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mediation_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-mediation}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mediation} -d ${POSTGRES_DB:-mediation}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    image: mediation-backend:latest
+    container_name: mediation-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-mediation}:${POSTGRES_PASSWORD:-mediation_secret}@postgres:5432/${POSTGRES_DB:-mediation}
+      PORT: 4000
+      QWEN_API_KEY: ${QWEN_API_KEY:-}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      JWT_SECRET: ${JWT_SECRET:-your-jwt-secret-change-in-prod}
+      ADMIN_DEFAULT_PASSWORD: ${ADMIN_DEFAULT_PASSWORD:-admin123}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "4000:4000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mediation-frontend:latest
+    container_name: mediation-frontend
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+
